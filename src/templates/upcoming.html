@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upcoming Fixtures – EPL Predictor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .nav-bar {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 2.5rem;
+        }
+        .nav-link {
+            padding: 0.6rem 1.5rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            border: 1px solid var(--glass-border);
+            transition: all 0.3s;
+        }
+        .nav-link.active, .nav-link:hover {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+        .fixture-card {
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            display: grid;
+            grid-template-columns: 80px 1fr auto;
+            align-items: center;
+            gap: 1.5rem;
+            transition: transform 0.2s, border-color 0.2s;
+            animation: slideUp 0.4s ease both;
+        }
+        .fixture-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(79, 70, 229, 0.4);
+        }
+        .fixture-date {
+            text-align: center;
+        }
+        .fixture-date .day {
+            font-size: 1.8rem;
+            font-weight: 800;
+            line-height: 1;
+        }
+        .fixture-date .month {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .fixture-teams {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .team-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        .vs-mini {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .fixture-prediction {
+            text-align: right;
+            min-width: 140px;
+        }
+        .pred-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.3rem;
+        }
+        .pred-result {
+            font-size: 1rem;
+            font-weight: 800;
+            padding: 0.3rem 0.8rem;
+            border-radius: 50px;
+            display: inline-block;
+        }
+        .pred-home { background: rgba(16,185,129,0.15); color: #10b981; }
+        .pred-draw { background: rgba(245,158,11,0.15); color: #f59e0b; }
+        .pred-away { background: rgba(239,68,68,0.15); color: #ef4444; }
+
+        .mini-bars { display: flex; gap: 4px; margin-top: 0.5rem; justify-content: flex-end; }
+        .mini-bar { height: 6px; border-radius: 3px; min-width: 4px; }
+        .mini-home { background: #10b981; }
+        .mini-draw { background: #f59e0b; }
+        .mini-away { background: #ef4444; }
+
+        .prob-tooltip {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            display: flex;
+            gap: 0.6rem;
+            justify-content: flex-end;
+            margin-top: 4px;
+        }
+
+        .warning-badge {
+            font-size: 0.7rem;
+            color: #f59e0b;
+            background: rgba(245,158,11,0.1);
+            border: 1px solid rgba(245,158,11,0.2);
+            border-radius: 4px;
+            padding: 0.2rem 0.5rem;
+        }
+
+        .loading-spinner {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            padding: 3rem;
+            color: var(--text-muted);
+        }
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 3px solid var(--glass-border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .api-info-box {
+            background: rgba(79, 70, 229, 0.08);
+            border: 1px solid rgba(79, 70, 229, 0.25);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+        .api-info-box a { color: #818cf8; }
+        .api-info-box code {
+            background: rgba(0,0,0,0.3);
+            padding: 0.1rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            color: #f472b6;
+        }
+
+        .model-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            margin-top: 0.5rem;
+            padding: 0.3rem 0.9rem;
+            background: rgba(16,185,129,0.12);
+            border: 1px solid rgba(16,185,129,0.25);
+            border-radius: 50px;
+            font-size: 0.78rem;
+            color: #10b981;
+            font-weight: 600;
+        }
+
+        .matchday-badge {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .matchweek-header {
+            display: inline-block;
+            padding: 0.4rem 1.2rem;
+            background: linear-gradient(135deg, var(--primary), #ec4899);
+            border-radius: 50px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            margin-top: 0.75rem;
+            letter-spacing: 0.03em;
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-shape bg-shape1"></div>
+    <div class="bg-shape bg-shape2"></div>
+
+    <div class="container glass">
+        <header>
+            <h1>Upcoming Fixtures</h1>
+            <p>Current matchweek predictions powered by AI.</p>
+            <div class="matchweek-header" id="matchweekBadge" style="display:none;"></div>
+        </header>
+
+        <nav class="nav-bar">
+            <a href="/" class="nav-link">🔮 Custom Match</a>
+            <a href="/upcoming" class="nav-link active">📅 Upcoming Fixtures</a>
+        </nav>
+
+        <div class="api-info-box" id="apiInfo" style="display:none;">
+            ℹ️ <strong>API Key not configured.</strong> Showing demo predictions below.<br>
+            To see real upcoming fixtures, get a free API key at
+            <a href="https://www.football-data.org/client/register" target="_blank">football-data.org</a>
+            and set it as an environment variable:<br>
+            <code>set FOOTBALL_DATA_API_KEY=your_key_here</code> (Windows) or
+            <code>export FOOTBALL_DATA_API_KEY=your_key_here</code> (Mac/Linux), then restart the server.
+        </div>
+
+        <div class="model-badge">🤖 Auto-updated every matchweek</div>
+
+        <div id="loadingState" class="loading-spinner">
+            <div class="spinner"></div>
+            <span>Fetching upcoming fixtures &amp; running predictions…</span>
+        </div>
+
+        <div id="fixturesList" style="display:none;"></div>
+    </div>
+
+    <script>
+        async function loadFixtures() {
+            const loading = document.getElementById('loadingState');
+            const list = document.getElementById('fixturesList');
+            const apiInfo = document.getElementById('apiInfo');
+
+            try {
+                const resp = await fetch('/fixtures');
+                const data = await resp.json();
+
+                loading.style.display = 'none';
+                list.style.display = 'block';
+
+                let fixtures = data.fixtures || data.demo_fixtures || [];
+                if (data.error && data.demo_fixtures) {
+                    apiInfo.style.display = 'block';
+                    fixtures = data.demo_fixtures;
+                }
+
+                // Show the matchweek badge
+                const mwBadge = document.getElementById('matchweekBadge');
+                if (data.matchweek) {
+                    mwBadge.textContent = 'Matchweek ' + data.matchweek;
+                    mwBadge.style.display = 'inline-block';
+                } else if (fixtures.length > 0 && fixtures[0].matchday === 'Demo') {
+                    mwBadge.textContent = 'Demo Matchweek';
+                    mwBadge.style.display = 'inline-block';
+                }
+
+                if (fixtures.length === 0) {
+                    list.innerHTML = '<p style="text-align:center;color:var(--text-muted)">No upcoming fixtures found.</p>';
+                    return;
+                }
+
+                list.innerHTML = fixtures.map((f, i) => renderCard(f, i)).join('');
+
+                // Animate mini bars after render
+                setTimeout(() => {
+                    document.querySelectorAll('.mini-bar').forEach(bar => {
+                        bar.style.width = bar.dataset.width + 'px';
+                    });
+                }, 100);
+
+            } catch (err) {
+                loading.innerHTML = `<p style="color:#ef4444">Failed to load fixtures. Is the server running?</p>`;
+            }
+        }
+
+        function renderCard(f, i) {
+            const dateParts = f.date.split('-');
+            const dateObj = new Date(f.date + 'T12:00:00');
+            const day = dateObj.getDate();
+            const month = dateObj.toLocaleString('en-GB', { month: 'short' });
+
+            const delay = i * 0.05;
+            let predHtml = '';
+
+            if (f.probabilities) {
+                const p = f.probabilities;
+                const pHome = (p['Home Win'] * 100).toFixed(0);
+                const pDraw = (p['Draw'] * 100).toFixed(0);
+                const pAway = (p['Away Win'] * 100).toFixed(0);
+
+                const predClass = f.prediction === 'Home Win' ? 'pred-home'
+                                : f.prediction === 'Draw'     ? 'pred-draw'
+                                :                               'pred-away';
+
+                const barScale = 90;
+                const hW = Math.round(p['Home Win'] * barScale);
+                const dW = Math.round(p['Draw'] * barScale);
+                const aW = Math.round(p['Away Win'] * barScale);
+
+                predHtml = `
+                    <div class="pred-label">Prediction</div>
+                    <div class="pred-result ${predClass}">${f.prediction}</div>
+                    <div class="mini-bars">
+                        <div class="mini-bar mini-home" style="width:${hW}px" title="Home ${pHome}%"></div>
+                        <div class="mini-bar mini-draw" style="width:${dW}px" title="Draw ${pDraw}%"></div>
+                        <div class="mini-bar mini-away" style="width:${aW}px" title="Away ${pAway}%"></div>
+                    </div>
+                    <div class="prob-tooltip">
+                        <span>H ${pHome}%</span>
+                        <span>D ${pDraw}%</span>
+                        <span>A ${pAway}%</span>
+                    </div>`;
+            } else {
+                predHtml = `<div class="warning-badge">⚠ ${f.warning || 'No prediction'}</div>`;
+            }
+
+            const mdLabel = f.matchday !== 'Demo'
+                ? `<div class="matchday-badge">MD ${f.matchday}</div>`
+                : `<div class="matchday-badge" style="color:#f59e0b">Demo</div>`;
+
+            return `
+            <div class="fixture-card" style="animation-delay:${delay}s">
+                <div class="fixture-date">
+                    ${mdLabel}
+                    <div class="day">${day}</div>
+                    <div class="month">${month}</div>
+                </div>
+                <div class="fixture-teams">
+                    <span class="team-name">${f.home_team}</span>
+                    <span class="vs-mini">vs</span>
+                    <span class="team-name">${f.away_team}</span>
+                </div>
+                <div class="fixture-prediction">${predHtml}</div>
+            </div>`;
+        }
+
+        loadFixtures();
+
+    </script>
+</body>
+</html>

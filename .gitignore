@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Environment variables (NEVER commit secrets)
+.env
+.env.*
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+
+# Raw season CSVs (large, not needed at runtime)
+data/raw/
+
+# Logs & temp
+*.log
+logs/
+
+# APScheduler / SQLite job store (if used)
+*.db
+jobs.sqlite

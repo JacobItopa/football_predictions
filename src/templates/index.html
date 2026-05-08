@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EPL Match Predictor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .nav-bar { display:flex; justify-content:center; gap:1rem; margin-bottom:2.5rem; }
+        .nav-link { padding:.6rem 1.5rem; border-radius:50px; text-decoration:none; font-weight:600; font-size:.95rem; color:var(--text-muted); border:1px solid var(--glass-border); transition:all .3s; }
+        .nav-link.active, .nav-link:hover { background:var(--primary); color:white; border-color:var(--primary); }
+    </style>
+</head>
+<body>
+    <div class="bg-shape bg-shape1"></div>
+    <div class="bg-shape bg-shape2"></div>
+
+    <div class="container glass">
+        <header>
+            <h1>Premier League Predictor</h1>
+            <p>Select teams to predict the full-time result using our advanced Machine Learning model.</p>
+        </header>
+
+        <nav class="nav-bar">
+            <a href="/" class="nav-link active">🔮 Custom Match</a>
+            <a href="/upcoming" class="nav-link">📅 Upcoming Fixtures</a>
+        </nav>
+
+        <form id="predictForm">
+            <div class="teams-container">
+                <div class="team-select">
+                    <label for="homeTeam">Home Team</label>
+                    <div class="select-wrapper">
+                        <select id="homeTeam" required>
+                            <option value="" disabled selected>Select Home Team</option>
+                            {% for team in teams %}
+                            <option value="{{ team }}">{{ team }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="vs-badge">VS</div>
+                
+                <div class="team-select">
+                    <label for="awayTeam">Away Team</label>
+                    <div class="select-wrapper">
+                        <select id="awayTeam" required>
+                            <option value="" disabled selected>Select Away Team</option>
+                            {% for team in teams %}
+                            <option value="{{ team }}">{{ team }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="predict-btn">Generate Prediction</button>
+        </form>
+
+        <div id="resultContainer" class="result-container hidden">
+            <h2 class="result-title">Predicted Outcome</h2>
+            <div class="winner-badge" id="predictedWinner">Home Win</div>
+            
+            <div class="prob-container">
+                <div class="prob-box">
+                    <div class="prob-label">Home Win</div>
+                    <div class="prob-value" id="probHome">45%</div>
+                    <div class="progress-bar"><div class="progress-fill home-fill" id="barHome"></div></div>
+                </div>
+                <div class="prob-box">
+                    <div class="prob-label">Draw</div>
+                    <div class="prob-value" id="probDraw">25%</div>
+                    <div class="progress-bar"><div class="progress-fill draw-fill" id="barDraw"></div></div>
+                </div>
+                <div class="prob-box">
+                    <div class="prob-label">Away Win</div>
+                    <div class="prob-value" id="probAway">30%</div>
+                    <div class="progress-bar"><div class="progress-fill away-fill" id="barAway"></div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('predictForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const homeTeam = document.getElementById('homeTeam').value;
+            const awayTeam = document.getElementById('awayTeam').value;
+            const btn = document.querySelector('.predict-btn');
+            
+            if (homeTeam === awayTeam) {
+                alert("Home and Away teams must be different!");
+                return;
+            }
+            
+            btn.textContent = 'Predicting...';
+            btn.classList.add('loading');
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ home_team: homeTeam, away_team: awayTeam })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('resultContainer').classList.remove('hidden');
+                    document.getElementById('predictedWinner').textContent = data.prediction;
+                    
+                    const pHome = (data.probabilities["Home Win"] * 100).toFixed(1);
+                    const pDraw = (data.probabilities["Draw"] * 100).toFixed(1);
+                    const pAway = (data.probabilities["Away Win"] * 100).toFixed(1);
+                    
+                    document.getElementById('probHome').textContent = pHome + '%';
+                    document.getElementById('probDraw').textContent = pDraw + '%';
+                    document.getElementById('probAway').textContent = pAway + '%';
+                    
+                    document.getElementById('barHome').style.width = pHome + '%';
+                    document.getElementById('barDraw').style.width = pDraw + '%';
+                    document.getElementById('barAway').style.width = pAway + '%';
+                    
+                    document.getElementById('resultContainer').scrollIntoView({ behavior: 'smooth' });
+                } else {
+                    alert(data.error || "An error occurred during prediction.");
+                }
+            } catch (error) {
+                alert("Failed to connect to the prediction server.");
+            } finally {
+                btn.textContent = 'Generate Prediction';
+                btn.classList.remove('loading');
+            }
+        });
+    </script>
+</body>
+</html>
