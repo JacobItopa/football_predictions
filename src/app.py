@@ -295,9 +295,14 @@ def update_live_scores_cache():
                 status = match["status"]
                 score = match.get("score", {}).get("fullTime", {})
                 
-                # Use current minute if available, otherwise just use status
+                # Format display time elegantly
                 minute_info = match.get("minute")
-                display_time = f"{minute_info}'" if minute_info else status
+                if status == "PAUSED":
+                    display_time = "HT"
+                elif minute_info:
+                    display_time = f"{minute_info}'"
+                else:
+                    display_time = "LIVE"
                 
                 new_cache[f"{api_home}_vs_{api_away}"] = {
                     "home_score": score.get("home"),
@@ -522,6 +527,7 @@ async def get_upcoming_fixtures():
             "home_team": api_home,
             "away_team": api_away,
             "status": match["status"],
+            "minute": match.get("minute"),
             "home_score": match.get("score", {}).get("fullTime", {}).get("home"),
             "away_score": match.get("score", {}).get("fullTime", {}).get("away"),
             "prediction": None,

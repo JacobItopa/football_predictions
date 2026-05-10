@@ -335,9 +335,9 @@
                         
                         let badgeHtml = '';
                         if (liveData.status === 'IN_PLAY' || liveData.status === 'PAUSED') {
-                            badgeHtml = `<div class="live-badge">🔴 ${liveData.display_time}</div>`;
+                            badgeHtml = `<div class="live-badge" style="margin-bottom:4px;">🔴 ${liveData.display_time}</div>`;
                         } else if (liveData.status === 'FINISHED') {
-                            badgeHtml = `<div class="live-badge ft">FT</div>`;
+                            badgeHtml = `<div class="live-badge ft" style="margin-bottom:4px;">FT</div>`;
                         }
                         
                         if (vsContainer) {
@@ -406,8 +406,12 @@
                     <div class="live-score">${f.home_score} - ${f.away_score}</div>
                 `;
             } else if ((f.status === 'IN_PLAY' || f.status === 'PAUSED') && f.home_score !== null) {
+                let displayTime = 'LIVE';
+                if (f.status === 'PAUSED') displayTime = 'HT';
+                else if (f.minute) displayTime = `${f.minute}'`;
+                
                 centerHtml = `
-                    <div class="live-badge" style="margin-bottom:4px;">🔴 LIVE</div>
+                    <div class="live-badge" style="margin-bottom:4px;">🔴 ${displayTime}</div>
                     <div class="live-score">${f.home_score} - ${f.away_score}</div>
                 `;
             }
