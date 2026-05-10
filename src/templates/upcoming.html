@@ -62,16 +62,57 @@
         .fixture-teams {
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 1rem;
         }
         .team-name {
             font-size: 1.1rem;
             font-weight: 600;
+            flex: 1;
+        }
+        .team-home { text-align: right; }
+        .team-away { text-align: left; }
+        .vs-container {
+            min-width: 70px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
         }
         .vs-mini {
             color: var(--text-muted);
             font-size: 0.85rem;
             font-weight: 600;
+        }
+        .live-badge {
+            display: inline-block;
+            background: #ef4444;
+            color: white;
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            animation: pulse 1.5s infinite;
+        }
+        .live-badge.ft {
+            background: #10b981;
+            animation: none;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        .live-score {
+            font-size: 1.2rem;
+            font-weight: 800;
+            color: #f8fafc;
+            background: rgba(15, 23, 42, 0.6);
+            padding: 0.2rem 0.6rem;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
         .fixture-prediction {
             text-align: right;
@@ -266,8 +307,49 @@
                     });
                 }, 100);
 
+                // Start Live Score Polling
+                if (!window.liveScoresInterval) {
+                    pollLiveScores();
+                    window.liveScoresInterval = setInterval(pollLiveScores, 30000);
+                }
+
             } catch (err) {
                 loading.innerHTML = `<p style="color:#ef4444">Failed to load fixtures. Is the server running?</p>`;
+            }
+        }
+
+        async function pollLiveScores() {
+            try {
+                const resp = await fetch('/api/live-scores');
+                if (!resp.ok) return;
+                const scores = await resp.json();
+                
+                document.querySelectorAll('.fixture-card').forEach(card => {
+                    const homeTeam = card.dataset.home;
+                    const awayTeam = card.dataset.away;
+                    const key = `${homeTeam}_vs_${awayTeam}`;
+                    
+                    if (scores[key]) {
+                        const liveData = scores[key];
+                        const vsContainer = card.querySelector('.vs-container');
+                        
+                        let badgeHtml = '';
+                        if (liveData.status === 'IN_PLAY' || liveData.status === 'PAUSED') {
+                            badgeHtml = `<div class="live-badge">🔴 ${liveData.display_time}</div>`;
+                        } else if (liveData.status === 'FINISHED') {
+                            badgeHtml = `<div class="live-badge ft">FT</div>`;
+                        }
+                        
+                        if (vsContainer) {
+                            vsContainer.innerHTML = `
+                                ${badgeHtml}
+                                <div class="live-score">${liveData.home_score} - ${liveData.away_score}</div>
+                            `;
+                        }
+                    }
+                });
+            } catch (e) {
+                console.error("Failed to poll live scores", e);
             }
         }
 
@@ -317,16 +399,18 @@
                 : `<div class="matchday-badge" style="color:#f59e0b">Demo</div>`;
 
             return `
-            <div class="fixture-card" style="animation-delay:${delay}s">
+            <div class="fixture-card" style="animation-delay:${delay}s" data-home="${f.home_team}" data-away="${f.away_team}">
                 <div class="fixture-date">
                     ${mdLabel}
                     <div class="day">${day}</div>
                     <div class="month">${month}</div>
                 </div>
                 <div class="fixture-teams">
-                    <span class="team-name">${f.home_team}</span>
-                    <span class="vs-mini">vs</span>
-                    <span class="team-name">${f.away_team}</span>
+                    <span class="team-name team-home">${f.home_team}</span>
+                    <div class="vs-container">
+                        <span class="vs-mini">vs</span>
+                    </div>
+                    <span class="team-name team-away">${f.away_team}</span>
                 </div>
                 <div class="fixture-prediction">${predHtml}</div>
             </div>`;

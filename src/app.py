@@ -14,6 +14,7 @@ import datetime
 from pydantic import BaseModel
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.interval import IntervalTrigger
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("epl_predictor")
@@ -261,10 +262,53 @@ def run_prediction(home_team: str, away_team: str, match_date_str: str, odds: di
     }
 
 # -----------------------------------------------------------------------
-# Retrain status (shared between scheduler and /retrain/status endpoint)
+# Retrain status & Live Scores Cache
 # -----------------------------------------------------------------------
 _retrain_status = {"running": False, "last_result": None}
+live_scores_cache = {}
 
+def update_live_scores_cache():
+    """Background task to fetch live scores every 60s."""
+    api_key = os.environ.get("FOOTBALL_DATA_API_KEY", "")
+    if not api_key: return
+    
+    url = "https://api.football-data.org/v4/competitions/PL/matches"
+    today = datetime.date.today()
+    date_from = (today - datetime.timedelta(days=2)).isoformat()
+    date_to = (today + datetime.timedelta(days=1)).isoformat()
+    
+    params = {
+        "status": "IN_PLAY,PAUSED,FINISHED",
+        "dateFrom": date_from,
+        "dateTo": date_to
+    }
+    headers = {"X-Auth-Token": api_key}
+    
+    try:
+        resp = requests.get(url, headers=headers, params=params, timeout=10)
+        if resp.status_code == 200:
+            matches = resp.json().get("matches", [])
+            new_cache = {}
+            for match in matches:
+                api_home = match["homeTeam"]["shortName"]
+                api_away = match["awayTeam"]["shortName"]
+                status = match["status"]
+                score = match.get("score", {}).get("fullTime", {})
+                
+                # Use current minute if available, otherwise just use status
+                minute_info = match.get("minute")
+                display_time = f"{minute_info}'" if minute_info else status
+                
+                new_cache[f"{api_home}_vs_{api_away}"] = {
+                    "home_score": score.get("home"),
+                    "away_score": score.get("away"),
+                    "status": status,
+                    "display_time": display_time
+                }
+            global live_scores_cache
+            live_scores_cache = new_cache
+    except Exception as e:
+        log.error(f"[Scheduler] Failed to fetch live scores: {e}")
 
 # -----------------------------------------------------------------------
 # Scheduled Retraining  (runs automatically - not exposed in the UI)
@@ -330,8 +374,15 @@ async def lifespan(app: FastAPI):
         id="retrain_friday",
         replace_existing=True,
     )
+    # Poll live scores every 60 seconds
+    scheduler.add_job(
+        update_live_scores_cache,
+        IntervalTrigger(seconds=60),
+        id="poll_live_scores",
+        replace_existing=True,
+    )
     scheduler.start()
-    log.info("[Scheduler] Automated retraining scheduled: Tue & Fri at 06:00 AM")
+    log.info("[Scheduler] Automated retraining & live polling scheduled.")
 
     yield  # Server runs here
 
@@ -375,6 +426,11 @@ async def predict_match(req: PredictionRequest):
     neutral_odds = {"H": 2.5, "D": 3.0, "A": 2.5}
     result = run_prediction(req.home_team, req.away_team, today, neutral_odds)
     return result
+
+
+@app.get("/api/live-scores")
+async def get_live_scores():
+    return live_scores_cache
 
 
 @app.get("/fixtures")
