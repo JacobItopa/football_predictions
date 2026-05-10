@@ -170,7 +170,11 @@ OUTCOME_MAP = {0: "Away Win", 1: "Draw", 2: "Home Win"}
 
 def fetch_live_odds() -> dict:
     """Fetches live odds from The Odds API and maps to CSV team names."""
-    api_key = "c46558c466b967e8a5808b72341f8e5b"
+    api_key = os.environ.get("ODDS_API_KEY")
+    if not api_key:
+        log.warning("ODDS_API_KEY environment variable not set. Live odds will not be fetched.")
+        return {}
+        
     url = f"https://api.the-odds-api.com/v4/sports/soccer_epl/odds/?apiKey={api_key}&regions=uk&markets=h2h"
     odds_dict = {}
     try:
