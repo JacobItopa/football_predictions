@@ -22,7 +22,9 @@ def merge_raw_data(input_dir, output_file):
         'HTHG', 'HTAG', 'HTR',
         'HS', 'AS', 'HST', 'AST', 
         'HF', 'AF', 'HC', 'AC', 
-        'HY', 'AY', 'HR', 'AR'
+        'HY', 'AY', 'HR', 'AR',
+        'B365H', 'B365D', 'B365A',
+        'AvgH', 'AvgD', 'AvgA'
     ]
     
     for file in all_files:

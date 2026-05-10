@@ -22,7 +22,10 @@ def train_and_evaluate_models(data_path, models_dir):
         'HomeGoalsScoredRolling', 'AwayGoalsScoredRolling',
         'HomeGoalsConcededRolling', 'AwayGoalsConcededRolling',
         'HomeShotsOnTargetRolling', 'AwayShotsOnTargetRolling',
-        'HomeElo', 'AwayElo'
+        'HomeElo', 'AwayElo',
+        'HomeRestDays', 'AwayRestDays',
+        'H2H_HomePoints',
+        'B365H', 'B365D', 'B365A'
     ]
     
     X = df[feature_cols]

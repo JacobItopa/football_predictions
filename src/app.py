@@ -9,6 +9,8 @@ import numpy as np
 import os
 import logging
 import requests
+import json
+import datetime
 from pydantic import BaseModel
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -87,6 +89,18 @@ TEAM_NAME_MAP = {
     "Wolves": "Wolves",
 }
 
+# Mapping for The Odds API -> CSV Names
+ODDS_TEAM_MAP = {
+    "Manchester City": "Man City",
+    "Manchester United": "Man United",
+    "Newcastle United": "Newcastle",
+    "Nottingham Forest": "Nott'm Forest",
+    "Sheffield United": "Sheffield United",
+    "Tottenham Hotspur": "Tottenham",
+    "West Ham United": "West Ham",
+    "Wolverhampton Wanderers": "Wolves",
+}
+
 # -----------------------------------------------------------------------
 # Load Model
 # -----------------------------------------------------------------------
@@ -94,11 +108,18 @@ MODEL_PATH = "models/best_model.joblib"
 model = joblib.load(MODEL_PATH) if os.path.exists(MODEL_PATH) else None
 
 # -----------------------------------------------------------------------
-# Load latest team stats from processed features
+# Load latest team stats & H2H from processed features
 # -----------------------------------------------------------------------
 DATA_PATH = "data/processed/processed_features.csv"
+H2H_PATH = "data/processed/h2h_stats.json"
+
 latest_stats: dict = {}
 teams: list = []
+h2h_stats: dict = {}
+
+if os.path.exists(H2H_PATH):
+    with open(H2H_PATH, "r") as f:
+        h2h_stats = json.load(f)
 
 if os.path.exists(DATA_PATH):
     df = pd.read_csv(DATA_PATH)
@@ -119,6 +140,7 @@ if os.path.exists(DATA_PATH):
                     "GoalsConcededRolling": last_match["HomeGoalsConcededRolling"],
                     "ShotsOnTargetRolling": last_match["HomeShotsOnTargetRolling"],
                     "Elo": last_match["HomeElo"],
+                    "LastMatchDate": str(last_match["Date"].date())
                 }
             else:
                 latest_stats[team] = {
@@ -127,6 +149,7 @@ if os.path.exists(DATA_PATH):
                     "GoalsConcededRolling": last_match["AwayGoalsConcededRolling"],
                     "ShotsOnTargetRolling": last_match["AwayShotsOnTargetRolling"],
                     "Elo": last_match["AwayElo"],
+                    "LastMatchDate": str(last_match["Date"].date())
                 }
 
 # -----------------------------------------------------------------------
@@ -138,15 +161,66 @@ FEATURE_COLS = [
     "HomeGoalsConcededRolling", "AwayGoalsConcededRolling",
     "HomeShotsOnTargetRolling", "AwayShotsOnTargetRolling",
     "HomeElo", "AwayElo",
+    "HomeRestDays", "AwayRestDays",
+    "H2H_HomePoints",
+    "B365H", "B365D", "B365A"
 ]
 OUTCOME_MAP = {0: "Away Win", 1: "Draw", 2: "Home Win"}
 
 
-def build_features(home_team: str, away_team: str) -> pd.DataFrame | None:
+def fetch_live_odds() -> dict:
+    """Fetches live odds from The Odds API and maps to CSV team names."""
+    api_key = "c46558c466b967e8a5808b72341f8e5b"
+    url = f"https://api.the-odds-api.com/v4/sports/soccer_epl/odds/?apiKey={api_key}&regions=uk&markets=h2h"
+    odds_dict = {}
+    try:
+        resp = requests.get(url, timeout=10)
+        if resp.status_code == 200:
+            for match in resp.json():
+                home_team = match.get("home_team")
+                away_team = match.get("away_team")
+                csv_home = ODDS_TEAM_MAP.get(home_team, home_team)
+                csv_away = ODDS_TEAM_MAP.get(away_team, away_team)
+                
+                if match.get("bookmakers"):
+                    bookie = next((b for b in match["bookmakers"] if b["key"] == "bet365"), match["bookmakers"][0])
+                    market = next((m for m in bookie["markets"] if m["key"] == "h2h"), None)
+                    if market:
+                        outcomes = {o["name"]: o["price"] for o in market["outcomes"]}
+                        odds_h = outcomes.get(home_team, 2.5)
+                        odds_a = outcomes.get(away_team, 2.5)
+                        odds_d = outcomes.get("Draw", 3.0)
+                        
+                        matchup_key = tuple(sorted([csv_home, csv_away]))
+                        odds_dict[matchup_key] = {"H": odds_h, "D": odds_d, "A": odds_a}
+    except Exception as e:
+        log.warning(f"Failed to fetch live odds: {e}")
+    return odds_dict
+
+
+def build_features(home_team: str, away_team: str, match_date_str: str, odds: dict) -> pd.DataFrame | None:
     if home_team not in latest_stats or away_team not in latest_stats:
         return None
     h = latest_stats[home_team]
     a = latest_stats[away_team]
+    
+    # Rest Days
+    match_date = pd.to_datetime(match_date_str)
+    h_rest = (match_date - pd.to_datetime(h["LastMatchDate"])).days
+    a_rest = (match_date - pd.to_datetime(a["LastMatchDate"])).days
+    
+    # H2H Points
+    matchup_key = f"{sorted([home_team, away_team])[0]}_vs_{sorted([home_team, away_team])[1]}"
+    history = h2h_stats.get(matchup_key, [])
+    home_points_earned = 0
+    h2h_points = 1.0 # Neutral default
+    past_matches = history[-5:]
+    if past_matches:
+        for m in past_matches:
+            if m["home"] == home_team: home_points_earned += m["home_pts"]
+            else: home_points_earned += m["away_pts"]
+        h2h_points = home_points_earned / len(past_matches)
+
     return pd.DataFrame([{
         "HomePointsRolling": h["PointsRolling"],
         "AwayPointsRolling": a["PointsRolling"],
@@ -158,11 +232,17 @@ def build_features(home_team: str, away_team: str) -> pd.DataFrame | None:
         "AwayShotsOnTargetRolling": a["ShotsOnTargetRolling"],
         "HomeElo": h["Elo"],
         "AwayElo": a["Elo"],
+        "HomeRestDays": h_rest,
+        "AwayRestDays": a_rest,
+        "H2H_HomePoints": h2h_points,
+        "B365H": odds.get("H", 2.5),
+        "B365D": odds.get("D", 3.0),
+        "B365A": odds.get("A", 2.5)
     }])
 
 
-def run_prediction(home_team: str, away_team: str) -> dict | None:
-    X = build_features(home_team, away_team)
+def run_prediction(home_team: str, away_team: str, match_date_str: str, odds: dict) -> dict | None:
+    X = build_features(home_team, away_team, match_date_str, odds)
     if X is None:
         return None
     pred = model.predict(X)[0]
@@ -285,7 +365,11 @@ async def predict_match(req: PredictionRequest):
         return JSONResponse({"error": "Model not loaded."}, status_code=500)
     if req.home_team not in latest_stats or req.away_team not in latest_stats:
         return JSONResponse({"error": f"Team data not found. Known teams: {teams}"}, status_code=400)
-    result = run_prediction(req.home_team, req.away_team)
+    
+    # Custom predictions default to today with neutral odds
+    today = str(datetime.date.today())
+    neutral_odds = {"H": 2.5, "D": 3.0, "A": 2.5}
+    result = run_prediction(req.home_team, req.away_team, today, neutral_odds)
     return result
 
 
@@ -329,6 +413,9 @@ async def get_upcoming_fixtures():
     # Filter to only that matchweek
     matchweek_matches = [m for m in raw_matches if m["matchday"] == current_matchweek]
 
+    # Fetch live odds once for all matches
+    live_odds = fetch_live_odds()
+
     fixtures_with_predictions = []
     for match in matchweek_matches:
         api_home = match["homeTeam"]["shortName"]
@@ -348,7 +435,10 @@ async def get_upcoming_fixtures():
         }
 
         if csv_home and csv_away:
-            pred = run_prediction(csv_home, csv_away)
+            matchup_key = tuple(sorted([csv_home, csv_away]))
+            match_odds = live_odds.get(matchup_key, {"H": 2.5, "D": 3.0, "A": 2.5})
+            
+            pred = run_prediction(csv_home, csv_away, entry["date"], match_odds)
             if pred:
                 entry["prediction"] = pred["prediction"]
                 entry["probabilities"] = pred["probabilities"]
@@ -380,7 +470,7 @@ def _demo_fixtures() -> list:
     ]
     results = []
     for i, m in enumerate(demo, 1):
-        pred = run_prediction(m["home_team"], m["away_team"])
+        pred = run_prediction(m["home_team"], m["away_team"], "2026-05-10", {"H": 2.5, "D": 3.0, "A": 2.5})
         results.append({
             "matchday": "Demo",
             "date": "2026-05-10",
@@ -425,6 +515,7 @@ def reload_model_and_stats():
                         "GoalsConcededRolling": last_match["HomeGoalsConcededRolling"],
                         "ShotsOnTargetRolling": last_match["HomeShotsOnTargetRolling"],
                         "Elo": last_match["HomeElo"],
+                        "LastMatchDate": str(last_match["Date"].date())
                     }
                 else:
                     new_stats[team] = {
@@ -433,8 +524,15 @@ def reload_model_and_stats():
                         "GoalsConcededRolling": last_match["AwayGoalsConcededRolling"],
                         "ShotsOnTargetRolling": last_match["AwayShotsOnTargetRolling"],
                         "Elo": last_match["AwayElo"],
+                        "LastMatchDate": str(last_match["Date"].date())
                     }
         latest_stats = new_stats
+        
+    # Reload H2H
+    global h2h_stats
+    if os.path.exists(H2H_PATH):
+        with open(H2H_PATH, "r") as f:
+            h2h_stats = json.load(f)
 
 
 # -----------------------------------------------------------------------

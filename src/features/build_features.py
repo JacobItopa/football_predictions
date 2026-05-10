@@ -2,6 +2,7 @@ import os
 import pandas as pd
 import numpy as np
 import numpy as np
+import json
 
 def calculate_elo(df, base_elo=1500, k=20):
     elos = {}
@@ -37,6 +38,63 @@ def calculate_elo(df, base_elo=1500, k=20):
     df['HomeElo'] = home_elos
     df['AwayElo'] = away_elos
     return df
+
+def calculate_h2h(df, window=5):
+    """
+    Calculates the historical average points the Home team earned against the Away team 
+    in their last `window` meetings.
+    """
+    h2h_points = []
+    h2h_history = {}
+    
+    for index, row in df.iterrows():
+        home = row['HomeTeam']
+        away = row['AwayTeam']
+        matchup = tuple(sorted([home, away]))
+        
+        if matchup not in h2h_history:
+            h2h_history[matchup] = []
+            
+        past_matches = h2h_history[matchup][-window:]
+        
+        # Calculate points home team earned in past matches
+        home_points_earned = 0
+        if past_matches:
+            for match in past_matches:
+                if match['home'] == home:
+                    home_points_earned += match['home_pts']
+                else:
+                    home_points_earned += match['away_pts']
+            h2h_points.append(home_points_earned / len(past_matches))
+        else:
+            h2h_points.append(1.0) # Assume neutral (1 pt average)
+        
+        # Add current match to history
+        if row['FTR'] == 'H':
+            hp, ap = 3, 0
+        elif row['FTR'] == 'A':
+            hp, ap = 0, 3
+        else:
+            hp, ap = 1, 1
+            
+        h2h_history[matchup].append({
+            'date': str(row['Date']),
+            'home': home,
+            'away': away,
+            'home_pts': hp,
+            'away_pts': ap
+        })
+        
+    df['H2H_HomePoints'] = h2h_points
+    
+    # Save h2h history for live inference
+    serializable_h2h = {f"{k[0]}_vs_{k[1]}": v for k, v in h2h_history.items()}
+    os.makedirs(os.path.join("data", "processed"), exist_ok=True)
+    with open(os.path.join("data", "processed", "h2h_stats.json"), "w") as f:
+        json.dump(serializable_h2h, f)
+        
+    return df
+
 
 def create_rolling_features(df, stats_cols, window=5):
     """
@@ -78,6 +136,10 @@ def create_rolling_features(df, stats_cols, window=5):
         for col in stats_cols:
             team_matches[f'{col}Rolling{window}'] = team_matches[col].rolling(window=window).mean().shift(1)
             
+        # Calculate Rest Days
+        team_matches['RestDays'] = team_matches['Date'].diff().dt.days
+        team_matches['RestDays'] = team_matches['RestDays'].fillna(14.0) # Default for first match
+            
         team_stats_dict[team] = team_matches
 
     # Now merge these rolling features back to the main dataframe
@@ -89,6 +151,8 @@ def create_rolling_features(df, stats_cols, window=5):
     df['AwayGoalsConcededRolling'] = np.nan
     df['HomeShotsOnTargetRolling'] = np.nan
     df['AwayShotsOnTargetRolling'] = np.nan
+    df['HomeRestDays'] = np.nan
+    df['AwayRestDays'] = np.nan
 
     print("Merging rolling features back to main dataframe...")
     for index, row in df.iterrows():
@@ -110,6 +174,9 @@ def create_rolling_features(df, stats_cols, window=5):
         df.at[index, 'HomeShotsOnTargetRolling'] = h_stats['ShotsOnTargetRolling5']
         df.at[index, 'AwayShotsOnTargetRolling'] = a_stats['ShotsOnTargetRolling5']
         
+        df.at[index, 'HomeRestDays'] = h_stats['RestDays']
+        df.at[index, 'AwayRestDays'] = a_stats['RestDays']
+        
     # Drop rows with NaN (the first few matches of each team)
     df = df.dropna().reset_index(drop=True)
     
@@ -124,6 +191,19 @@ def main(input_file, output_file):
     df = pd.read_csv(input_file)
     df['Date'] = pd.to_datetime(df['Date'])
     
+    # Process Bookmaker Odds
+    for col in ['B365H', 'B365D', 'B365A']:
+        if col not in df.columns:
+            df[col] = np.nan
+    if 'AvgH' in df.columns:
+        df['B365H'] = df['B365H'].fillna(df['AvgH'])
+        df['B365D'] = df['B365D'].fillna(df['AvgD'])
+        df['B365A'] = df['B365A'].fillna(df['AvgA'])
+    # Fill remaining with median
+    df['B365H'] = df['B365H'].fillna(df['B365H'].median())
+    df['B365D'] = df['B365D'].fillna(df['B365D'].median())
+    df['B365A'] = df['B365A'].fillna(df['B365A'].median())
+    
     stats_to_roll = ['Points', 'GoalsScored', 'GoalsConceded', 'Shots', 'ShotsOnTarget']
     
     print("Creating features...")
@@ -131,6 +211,9 @@ def main(input_file, output_file):
     
     print("Calculating Elo ratings...")
     processed_df = calculate_elo(processed_df)
+    
+    print("Calculating Head-to-Head...")
+    processed_df = calculate_h2h(processed_df, window=5)
     
     # Select final columns for modeling
     final_columns = [
@@ -140,6 +223,9 @@ def main(input_file, output_file):
         'HomeGoalsConcededRolling', 'AwayGoalsConcededRolling',
         'HomeShotsOnTargetRolling', 'AwayShotsOnTargetRolling',
         'HomeElo', 'AwayElo',
+        'HomeRestDays', 'AwayRestDays',
+        'H2H_HomePoints',
+        'B365H', 'B365D', 'B365A',
         'Target', 'FTR'
     ]
     
