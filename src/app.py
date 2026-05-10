@@ -310,38 +310,24 @@ def update_live_scores_cache():
     except Exception as e:
         log.error(f"[Scheduler] Failed to fetch live scores: {e}")
 
-def get_target_matchweek(matches) -> int:
-    """Finds the active matchweek, keeping it active until Tuesday 22:00 UTC."""
+def get_active_window():
+    """
+    Returns the start and end datetime for the current display window.
+    The window resets exactly every Tuesday at 22:00 UTC.
+    """
     now_utc = datetime.datetime.utcnow()
     
-    matchdays = {}
-    for m in matches:
-        md = m.get("matchday")
-        if not md: continue
-        dt_str = m.get("utcDate", "").replace("Z", "+00:00")
-        try:
-            dt = datetime.datetime.fromisoformat(dt_str).replace(tzinfo=None)
-            if md not in matchdays:
-                matchdays[md] = []
-            matchdays[md].append(dt)
-        except Exception:
-            pass
-
-    for md in sorted(matchdays.keys()):
-        last_match_dt = max(matchdays[md])
+    # 0=Mon, 1=Tue, 2=Wed, 3=Thu, 4=Fri, 5=Sat, 6=Sun
+    # Find the most recent Tuesday 22:00 UTC
+    days_since_tuesday = now_utc.weekday() - 1
+    if days_since_tuesday < 0 or (days_since_tuesday == 0 and now_utc.hour < 22):
+        days_since_tuesday += 7
         
-        # Next Tuesday (weekday 1) at 22:00
-        days_ahead = 1 - last_match_dt.weekday()
-        if days_ahead < 0 or (days_ahead == 0 and last_match_dt.hour >= 22):
-            days_ahead += 7
-            
-        expiration = last_match_dt + datetime.timedelta(days=days_ahead)
-        expiration = expiration.replace(hour=22, minute=0, second=0, microsecond=0)
-        
-        if now_utc < expiration:
-            return md
-            
-    return max(matchdays.keys()) if matchdays else 1
+    most_recent_tuesday = now_utc - datetime.timedelta(days=days_since_tuesday)
+    window_start = most_recent_tuesday.replace(hour=22, minute=0, second=0, microsecond=0)
+    window_end = window_start + datetime.timedelta(days=7)
+    
+    return window_start, window_end
 
 # -----------------------------------------------------------------------
 # Scheduled Retraining  (runs automatically - not exposed in the UI)
@@ -500,9 +486,23 @@ async def get_upcoming_fixtures():
     if not raw_matches:
         return {"fixtures": [], "total": 0, "matchweek": None}
 
-    # Use robust Tuesday 10PM retention logic
-    current_matchweek = get_target_matchweek(raw_matches)
-    matchweek_matches = [m for m in raw_matches if m["matchday"] == current_matchweek]
+    # Use the 7-day rolling window (Resets Tuesday 22:00 UTC)
+    window_start, window_end = get_active_window()
+    
+    matchweek_matches = []
+    active_matchweek = None
+    
+    for m in raw_matches:
+        dt_str = m.get("utcDate", "").replace("Z", "+00:00")
+        try:
+            dt = datetime.datetime.fromisoformat(dt_str).replace(tzinfo=None)
+            if window_start <= dt < window_end:
+                matchweek_matches.append(m)
+                # Keep track of the most common matchday in this window
+                if not active_matchweek:
+                    active_matchweek = m.get("matchday")
+        except Exception:
+            pass
 
     # Fetch live odds once for all matches
     live_odds = fetch_live_odds()
@@ -550,7 +550,7 @@ async def get_upcoming_fixtures():
     return {
         "fixtures": fixtures_with_predictions,
         "total": len(fixtures_with_predictions),
-        "matchweek": current_matchweek,
+        "matchweek": active_matchweek,
     }
 
 
