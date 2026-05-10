@@ -355,9 +355,10 @@
 
         function renderCard(f, i) {
             const dateParts = f.date.split('-');
-            const dateObj = new Date(f.date + 'T12:00:00');
+            const dateObj = new Date(f.utc_date || (f.date + 'T12:00:00'));
             const day = dateObj.getDate();
             const month = dateObj.toLocaleString('en-GB', { month: 'short' });
+            const time = f.utc_date ? dateObj.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '';
 
             const delay = i * 0.05;
             let predHtml = '';
@@ -398,17 +399,31 @@
                 ? `<div class="matchday-badge">MD ${f.matchday}</div>`
                 : `<div class="matchday-badge" style="color:#f59e0b">Demo</div>`;
 
+            let centerHtml = `<span class="vs-mini">vs</span>`;
+            if (f.status === 'FINISHED' && f.home_score !== null) {
+                centerHtml = `
+                    <div class="live-badge ft" style="margin-bottom:4px;">FT</div>
+                    <div class="live-score">${f.home_score} - ${f.away_score}</div>
+                `;
+            } else if ((f.status === 'IN_PLAY' || f.status === 'PAUSED') && f.home_score !== null) {
+                centerHtml = `
+                    <div class="live-badge" style="margin-bottom:4px;">🔴 LIVE</div>
+                    <div class="live-score">${f.home_score} - ${f.away_score}</div>
+                `;
+            }
+
             return `
             <div class="fixture-card" style="animation-delay:${delay}s" data-home="${f.home_team}" data-away="${f.away_team}">
                 <div class="fixture-date">
                     ${mdLabel}
                     <div class="day">${day}</div>
                     <div class="month">${month}</div>
+                    ${time ? `<div class="time" style="font-size:0.8rem; font-weight:700; color:var(--text-muted); margin-top:6px;">${time}</div>` : ''}
                 </div>
                 <div class="fixture-teams">
                     <span class="team-name team-home">${f.home_team}</span>
                     <div class="vs-container">
-                        <span class="vs-mini">vs</span>
+                        ${centerHtml}
                     </div>
                     <span class="team-name team-away">${f.away_team}</span>
                 </div>

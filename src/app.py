@@ -310,6 +310,39 @@ def update_live_scores_cache():
     except Exception as e:
         log.error(f"[Scheduler] Failed to fetch live scores: {e}")
 
+def get_target_matchweek(matches) -> int:
+    """Finds the active matchweek, keeping it active until Tuesday 22:00 UTC."""
+    now_utc = datetime.datetime.utcnow()
+    
+    matchdays = {}
+    for m in matches:
+        md = m.get("matchday")
+        if not md: continue
+        dt_str = m.get("utcDate", "").replace("Z", "+00:00")
+        try:
+            dt = datetime.datetime.fromisoformat(dt_str).replace(tzinfo=None)
+            if md not in matchdays:
+                matchdays[md] = []
+            matchdays[md].append(dt)
+        except Exception:
+            pass
+
+    for md in sorted(matchdays.keys()):
+        last_match_dt = max(matchdays[md])
+        
+        # Next Tuesday (weekday 1) at 22:00
+        days_ahead = 1 - last_match_dt.weekday()
+        if days_ahead < 0 or (days_ahead == 0 and last_match_dt.hour >= 22):
+            days_ahead += 7
+            
+        expiration = last_match_dt + datetime.timedelta(days=days_ahead)
+        expiration = expiration.replace(hour=22, minute=0, second=0, microsecond=0)
+        
+        if now_utc < expiration:
+            return md
+            
+    return max(matchdays.keys()) if matchdays else 1
+
 # -----------------------------------------------------------------------
 # Scheduled Retraining  (runs automatically - not exposed in the UI)
 # -----------------------------------------------------------------------
@@ -457,7 +490,7 @@ async def get_upcoming_fixtures():
     headers = {"X-Auth-Token": api_key}
     url = "https://api.football-data.org/v4/competitions/PL/matches"
     try:
-        resp = requests.get(url, headers=headers, params={"status": "SCHEDULED"}, timeout=10)
+        resp = requests.get(url, headers=headers, timeout=10)
         resp.raise_for_status()
     except requests.RequestException as e:
         return JSONResponse({"error": f"Failed to fetch fixtures: {e}"}, status_code=502)
@@ -467,10 +500,8 @@ async def get_upcoming_fixtures():
     if not raw_matches:
         return {"fixtures": [], "total": 0, "matchweek": None}
 
-    # --- Only show the CURRENT (nearest) matchweek ---
-    # Find the earliest matchday number among all scheduled matches
-    current_matchweek = min(m["matchday"] for m in raw_matches)
-    # Filter to only that matchweek
+    # Use robust Tuesday 10PM retention logic
+    current_matchweek = get_target_matchweek(raw_matches)
     matchweek_matches = [m for m in raw_matches if m["matchday"] == current_matchweek]
 
     # Fetch live odds once for all matches
@@ -487,8 +518,12 @@ async def get_upcoming_fixtures():
         entry = {
             "matchday": match["matchday"],
             "date": match["utcDate"][:10],
+            "utc_date": match["utcDate"],
             "home_team": api_home,
             "away_team": api_away,
+            "status": match["status"],
+            "home_score": match.get("score", {}).get("fullTime", {}).get("home"),
+            "away_score": match.get("score", {}).get("fullTime", {}).get("away"),
             "prediction": None,
             "probabilities": None,
             "warning": None,
