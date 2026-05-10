@@ -227,6 +227,49 @@
             margin-top: 0.75rem;
             letter-spacing: 0.03em;
         }
+
+        /* Mobile Responsive UI */
+        @media (max-width: 768px) {
+            .nav-bar {
+                flex-direction: column;
+                gap: 0.8rem;
+            }
+            .nav-link {
+                text-align: center;
+            }
+            .fixture-card {
+                grid-template-columns: 60px 1fr;
+                gap: 1rem;
+                padding: 1.2rem 1rem;
+            }
+            .fixture-date .day {
+                font-size: 1.4rem;
+            }
+            .team-name {
+                font-size: 0.95rem;
+            }
+            .vs-container {
+                min-width: 50px;
+            }
+            .live-score {
+                font-size: 1rem;
+                padding: 0.2rem 0.4rem;
+            }
+            .fixture-prediction {
+                grid-column: 1 / -1;
+                text-align: center;
+                margin-top: 0.5rem;
+                padding-top: 1rem;
+                border-top: 1px solid rgba(255,255,255,0.05);
+            }
+            .prob-tooltip {
+                justify-content: center;
+                margin-top: 0.5rem;
+            }
+            .mini-bars {
+                justify-content: center;
+            }
+        }
     </style>
 </head>
 <body>
