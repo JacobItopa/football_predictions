@@ -40,6 +40,29 @@ def run_pipeline(season: int | None = None) -> dict:
         "errors": [],
     }
 
+    # -- Step 0: Refresh xG data from Understat ---------------------------
+    print("\n" + "=" * 60)
+    print("STEP 0 - Refreshing Expected Goals (xG) data from Understat")
+    print("=" * 60)
+    try:
+        _root = os.path.abspath(".")
+        if _root not in sys.path:
+            sys.path.insert(0, _root)
+
+        import importlib.util
+        _spec = importlib.util.spec_from_file_location(
+            "fetch_xg_data",
+            os.path.join(_root, "src", "data", "fetch_xg_data.py")
+        )
+        _mod = importlib.util.module_from_spec(_spec)
+        _spec.loader.exec_module(_mod)
+        _mod.fetch_xg_history()
+        print("[OK] xG data refreshed.")
+    except Exception as e:
+        msg = f"xG data refresh failed: {e}"
+        print(f"WARNING: {msg} - continuing without xG refresh.")
+        result["errors"].append(msg)
+
     # -- Step 1: Fetch & append latest results ---------------------------
     print("\n" + "=" * 60)
     print("STEP 1 - Fetching latest finished match results")
@@ -115,7 +138,12 @@ def run_pipeline(season: int | None = None) -> dict:
             "HomeGoalsScoredRolling", "AwayGoalsScoredRolling",
             "HomeGoalsConcededRolling", "AwayGoalsConcededRolling",
             "HomeShotsOnTargetRolling", "AwayShotsOnTargetRolling",
+            "Home_xGRolling", "Away_xGRolling",
+            "Home_xGConcededRolling", "Away_xGConcededRolling",
             "HomeElo", "AwayElo",
+            "HomeRestDays", "AwayRestDays",
+            "H2H_HomePoints",
+            "B365H", "B365D", "B365A",
         ]
 
         X = df[feature_cols]

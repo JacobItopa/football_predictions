@@ -125,6 +125,15 @@ def create_rolling_features(df, stats_cols, window=5):
                 team_matches[col] = np.where(team_matches['HomeTeam'] == team, team_matches['HS'], team_matches['AS'])
             elif col == 'ShotsOnTarget':
                 team_matches[col] = np.where(team_matches['HomeTeam'] == team, team_matches['HST'], team_matches['AST'])
+            elif col == 'xGScored':
+                # Fallback to actual goals if xG is missing
+                h_xg = team_matches['Home_xG'].fillna(team_matches['FTHG'])
+                a_xg = team_matches['Away_xG'].fillna(team_matches['FTAG'])
+                team_matches[col] = np.where(team_matches['HomeTeam'] == team, h_xg, a_xg)
+            elif col == 'xGConceded':
+                h_xg_c = team_matches['Away_xG'].fillna(team_matches['FTAG'])
+                a_xg_c = team_matches['Home_xG'].fillna(team_matches['FTHG'])
+                team_matches[col] = np.where(team_matches['HomeTeam'] == team, h_xg_c, a_xg_c)
             elif col == 'Points':
                 # Win = 3, Draw = 1, Loss = 0
                 team_matches[col] = 0
@@ -151,6 +160,10 @@ def create_rolling_features(df, stats_cols, window=5):
     df['AwayGoalsConcededRolling'] = np.nan
     df['HomeShotsOnTargetRolling'] = np.nan
     df['AwayShotsOnTargetRolling'] = np.nan
+    df['Home_xGRolling'] = np.nan
+    df['Away_xGRolling'] = np.nan
+    df['Home_xGConcededRolling'] = np.nan
+    df['Away_xGConcededRolling'] = np.nan
     df['HomeRestDays'] = np.nan
     df['AwayRestDays'] = np.nan
 
@@ -174,12 +187,22 @@ def create_rolling_features(df, stats_cols, window=5):
         df.at[index, 'HomeShotsOnTargetRolling'] = h_stats['ShotsOnTargetRolling5']
         df.at[index, 'AwayShotsOnTargetRolling'] = a_stats['ShotsOnTargetRolling5']
         
+        df.at[index, 'Home_xGRolling'] = h_stats['xGScoredRolling5']
+        df.at[index, 'Away_xGRolling'] = a_stats['xGScoredRolling5']
+        
+        df.at[index, 'Home_xGConcededRolling'] = h_stats['xGConcededRolling5']
+        df.at[index, 'Away_xGConcededRolling'] = a_stats['xGConcededRolling5']
+        
         df.at[index, 'HomeRestDays'] = h_stats['RestDays']
         df.at[index, 'AwayRestDays'] = a_stats['RestDays']
         
-    # Drop rows with NaN (the first few matches of each team)
-    df = df.dropna().reset_index(drop=True)
-    
+    # Drop rows with NaN in the calculated rolling features (the first few matches of each team)
+    cols_to_check = [
+        'HomePointsRolling', 'AwayPointsRolling',
+        'HomeGoalsScoredRolling', 'AwayGoalsScoredRolling',
+        'Home_xGRolling', 'Away_xGRolling'
+    ]
+    df = df.dropna(subset=cols_to_check).reset_index(drop=True)
     # Map Target Variable FTR to numbers: H=2, D=1, A=0
     target_mapping = {'H': 2, 'D': 1, 'A': 0}
     df['Target'] = df['FTR'].map(target_mapping)
@@ -204,7 +227,12 @@ def main(input_file, output_file):
     df['B365D'] = df['B365D'].fillna(df['B365D'].median())
     df['B365A'] = df['B365A'].fillna(df['B365A'].median())
     
-    stats_to_roll = ['Points', 'GoalsScored', 'GoalsConceded', 'Shots', 'ShotsOnTarget']
+    # Ensure xG columns exist if they weren't merged (defensive)
+    if 'Home_xG' not in df.columns:
+        df['Home_xG'] = np.nan
+        df['Away_xG'] = np.nan
+        
+    stats_to_roll = ['Points', 'GoalsScored', 'GoalsConceded', 'Shots', 'ShotsOnTarget', 'xGScored', 'xGConceded']
     
     print("Creating features...")
     processed_df = create_rolling_features(df, stats_to_roll, window=5)
@@ -222,6 +250,8 @@ def main(input_file, output_file):
         'HomeGoalsScoredRolling', 'AwayGoalsScoredRolling',
         'HomeGoalsConcededRolling', 'AwayGoalsConcededRolling',
         'HomeShotsOnTargetRolling', 'AwayShotsOnTargetRolling',
+        'Home_xGRolling', 'Away_xGRolling',
+        'Home_xGConcededRolling', 'Away_xGConcededRolling',
         'HomeElo', 'AwayElo',
         'HomeRestDays', 'AwayRestDays',
         'H2H_HomePoints',

@@ -140,6 +140,8 @@ if os.path.exists(DATA_PATH):
                     "GoalsScoredRolling": last_match["HomeGoalsScoredRolling"],
                     "GoalsConcededRolling": last_match["HomeGoalsConcededRolling"],
                     "ShotsOnTargetRolling": last_match["HomeShotsOnTargetRolling"],
+                    "xGRolling": last_match.get("Home_xGRolling", last_match["HomeGoalsScoredRolling"]),
+                    "xGConcededRolling": last_match.get("Home_xGConcededRolling", last_match["HomeGoalsConcededRolling"]),
                     "Elo": last_match["HomeElo"],
                     "LastMatchDate": str(last_match["Date"].date())
                 }
@@ -149,6 +151,8 @@ if os.path.exists(DATA_PATH):
                     "GoalsScoredRolling": last_match["AwayGoalsScoredRolling"],
                     "GoalsConcededRolling": last_match["AwayGoalsConcededRolling"],
                     "ShotsOnTargetRolling": last_match["AwayShotsOnTargetRolling"],
+                    "xGRolling": last_match.get("Away_xGRolling", last_match["AwayGoalsScoredRolling"]),
+                    "xGConcededRolling": last_match.get("Away_xGConcededRolling", last_match["AwayGoalsConcededRolling"]),
                     "Elo": last_match["AwayElo"],
                     "LastMatchDate": str(last_match["Date"].date())
                 }
@@ -161,6 +165,8 @@ FEATURE_COLS = [
     "HomeGoalsScoredRolling", "AwayGoalsScoredRolling",
     "HomeGoalsConcededRolling", "AwayGoalsConcededRolling",
     "HomeShotsOnTargetRolling", "AwayShotsOnTargetRolling",
+    "Home_xGRolling", "Away_xGRolling",
+    "Home_xGConcededRolling", "Away_xGConcededRolling",
     "HomeElo", "AwayElo",
     "HomeRestDays", "AwayRestDays",
     "H2H_HomePoints",
@@ -235,6 +241,10 @@ def build_features(home_team: str, away_team: str, match_date_str: str, odds: di
         "AwayGoalsConcededRolling": a["GoalsConcededRolling"],
         "HomeShotsOnTargetRolling": h["ShotsOnTargetRolling"],
         "AwayShotsOnTargetRolling": a["ShotsOnTargetRolling"],
+        "Home_xGRolling": h["xGRolling"],
+        "Away_xGRolling": a["xGRolling"],
+        "Home_xGConcededRolling": h["xGConcededRolling"],
+        "Away_xGConcededRolling": a["xGConcededRolling"],
         "HomeElo": h["Elo"],
         "AwayElo": a["Elo"],
         "HomeRestDays": h_rest,

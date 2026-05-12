@@ -9,7 +9,8 @@ def parse_date(date_series):
 def merge_raw_data(input_dir, output_file):
     print("Finding raw CSV files...")
     all_files = glob.glob(os.path.join(input_dir, "*.csv"))
-    print(f"Found {len(all_files)} files.")
+    all_files = [f for f in all_files if not f.endswith("xg_data.csv")]
+    print(f"Found {len(all_files)} matching raw files.")
     
     df_list = []
     
@@ -54,6 +55,23 @@ def merge_raw_data(input_dir, output_file):
     
     # Drop rows without HomeTeam or AwayTeam
     merged_df = merged_df.dropna(subset=['HomeTeam', 'AwayTeam', 'Date'])
+    
+    # Merge Expected Goals (xG) data if available
+    xg_path = os.path.join(input_dir, "xg_data.csv")
+    if os.path.exists(xg_path):
+        print("Merging xG data...")
+        xg_df = pd.read_csv(xg_path)
+        xg_df['Date'] = pd.to_datetime(xg_df['Date'])
+        
+        merged_df = pd.merge(
+            merged_df, 
+            xg_df, 
+            on=['Date', 'HomeTeam', 'AwayTeam'], 
+            how='left'
+        )
+        print("xG data merged successfully.")
+    else:
+        print("Warning: xg_data.csv not found in raw data. xG features will be missing.")
     
     print(f"Merged dataset shape: {merged_df.shape}")
     merged_df.to_csv(output_file, index=False)

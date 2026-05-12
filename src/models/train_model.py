@@ -22,6 +22,8 @@ def train_and_evaluate_models(data_path, models_dir):
         'HomeGoalsScoredRolling', 'AwayGoalsScoredRolling',
         'HomeGoalsConcededRolling', 'AwayGoalsConcededRolling',
         'HomeShotsOnTargetRolling', 'AwayShotsOnTargetRolling',
+        'Home_xGRolling', 'Away_xGRolling',
+        'Home_xGConcededRolling', 'Away_xGConcededRolling',
         'HomeElo', 'AwayElo',
         'HomeRestDays', 'AwayRestDays',
         'H2H_HomePoints',
