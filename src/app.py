@@ -625,6 +625,8 @@ def reload_model_and_stats():
                         "GoalsScoredRolling": last_match["HomeGoalsScoredRolling"],
                         "GoalsConcededRolling": last_match["HomeGoalsConcededRolling"],
                         "ShotsOnTargetRolling": last_match["HomeShotsOnTargetRolling"],
+                        "xGRolling": last_match.get("Home_xGRolling", last_match["HomeGoalsScoredRolling"]),
+                        "xGConcededRolling": last_match.get("Home_xGConcededRolling", last_match["HomeGoalsConcededRolling"]),
                         "Elo": last_match["HomeElo"],
                         "LastMatchDate": str(last_match["Date"].date())
                     }
@@ -634,6 +636,8 @@ def reload_model_and_stats():
                         "GoalsScoredRolling": last_match["AwayGoalsScoredRolling"],
                         "GoalsConcededRolling": last_match["AwayGoalsConcededRolling"],
                         "ShotsOnTargetRolling": last_match["AwayShotsOnTargetRolling"],
+                        "xGRolling": last_match.get("Away_xGRolling", last_match["AwayGoalsScoredRolling"]),
+                        "xGConcededRolling": last_match.get("Away_xGConcededRolling", last_match["AwayGoalsConcededRolling"]),
                         "Elo": last_match["AwayElo"],
                         "LastMatchDate": str(last_match["Date"].date())
                     }
