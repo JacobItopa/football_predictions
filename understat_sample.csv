@@ -1,0 +1,21 @@
+league,season,game,league_id,season_id,game_id,date,home_team_id,away_team_id,home_team,away_team,away_team_code,home_team_code,home_goals,away_goals,home_xg,away_xg,is_result,has_data,url
+ENG-Premier League,2324,2023-08-11 Burnley-Manchester City,1,2023,22275,2023-08-11 19:00:00,92,88,Burnley,Manchester City,MCI,BUR,0,3,0.311032,2.40074,True,True,https://understat.com/match/22275
+ENG-Premier League,2324,2023-08-12 Arsenal-Nottingham Forest,1,2023,22276,2023-08-12 11:30:00,83,249,Arsenal,Nottingham Forest,NOT,ARS,2,1,0.84262,0.966305,True,True,https://understat.com/match/22276
+ENG-Premier League,2324,2023-08-12 Bournemouth-West Ham,1,2023,22277,2023-08-12 14:00:00,73,81,Bournemouth,West Ham,WHU,BOU,1,1,1.51025,1.4834,True,True,https://understat.com/match/22277
+ENG-Premier League,2324,2023-08-12 Brighton-Luton,1,2023,22278,2023-08-12 14:00:00,220,256,Brighton,Luton,LUT,BRI,4,1,4.36748,1.88594,True,True,https://understat.com/match/22278
+ENG-Premier League,2324,2023-08-12 Everton-Fulham,1,2023,22279,2023-08-12 14:00:00,72,228,Everton,Fulham,FLH,EVE,0,1,2.59001,1.58144,True,True,https://understat.com/match/22279
+ENG-Premier League,2324,2023-08-12 Newcastle United-Aston Villa,1,2023,22281,2023-08-12 16:30:00,86,71,Newcastle United,Aston Villa,AVL,NEW,5,1,4.32208,1.486,True,True,https://understat.com/match/22281
+ENG-Premier League,2324,2023-08-12 Sheffield United-Crystal Palace,1,2023,22280,2023-08-12 14:00:00,238,78,Sheffield United,Crystal Palace,CRY,SHE,0,1,0.422704,2.27616,True,True,https://understat.com/match/22280
+ENG-Premier League,2324,2023-08-13 Brentford-Tottenham,1,2023,22282,2023-08-13 13:00:00,244,82,Brentford,Tottenham,TOT,BRE,2,2,1.90756,1.45316,True,True,https://understat.com/match/22282
+ENG-Premier League,2324,2023-08-13 Chelsea-Liverpool,1,2023,22283,2023-08-13 15:30:00,80,87,Chelsea,Liverpool,LIV,CHE,1,1,1.93258,1.29994,True,True,https://understat.com/match/22283
+ENG-Premier League,2324,2023-08-14 Manchester United-Wolverhampton Wanderers,1,2023,22284,2023-08-14 19:00:00,89,229,Manchester United,Wolverhampton Wanderers,WOL,MUN,1,0,1.97087,1.72228,True,True,https://understat.com/match/22284
+ENG-Premier League,2324,2023-08-18 Nottingham Forest-Sheffield United,1,2023,22285,2023-08-18 18:45:00,249,238,Nottingham Forest,Sheffield United,SHE,NOT,2,1,1.37181,0.551038,True,True,https://understat.com/match/22285
+ENG-Premier League,2324,2023-08-19 Fulham-Brentford,1,2023,22287,2023-08-19 14:00:00,228,244,Fulham,Brentford,BRE,FLH,0,3,0.399899,3.46888,True,True,https://understat.com/match/22287
+ENG-Premier League,2324,2023-08-19 Liverpool-Bournemouth,1,2023,22288,2023-08-19 14:00:00,87,73,Liverpool,Bournemouth,BOU,LIV,3,1,3.25448,1.3867,True,True,https://understat.com/match/22288
+ENG-Premier League,2324,2023-08-19 Manchester City-Newcastle United,1,2023,22291,2023-08-19 19:00:00,88,86,Manchester City,Newcastle United,NEW,MCI,1,0,1.22528,0.257154,True,True,https://understat.com/match/22291
+ENG-Premier League,2324,2023-08-19 Tottenham-Manchester United,1,2023,22290,2023-08-19 16:30:00,82,89,Tottenham,Manchester United,MUN,TOT,2,0,2.53904,2.44604,True,True,https://understat.com/match/22290
+ENG-Premier League,2324,2023-08-19 Wolverhampton Wanderers-Brighton,1,2023,22286,2023-08-19 14:00:00,229,220,Wolverhampton Wanderers,Brighton,BRI,WOL,1,4,2.68821,3.15562,True,True,https://understat.com/match/22286
+ENG-Premier League,2324,2023-08-20 Aston Villa-Everton,1,2023,22292,2023-08-20 13:00:00,71,72,Aston Villa,Everton,EVE,AVL,4,0,3.24336,0.721465,True,True,https://understat.com/match/22292
+ENG-Premier League,2324,2023-08-20 West Ham-Chelsea,1,2023,22293,2023-08-20 15:30:00,81,80,West Ham,Chelsea,CHE,WHU,3,1,1.71234,1.60916,True,True,https://understat.com/match/22293
+ENG-Premier League,2324,2023-08-21 Crystal Palace-Arsenal,1,2023,22294,2023-08-21 19:00:00,78,83,Crystal Palace,Arsenal,ARS,CRY,0,1,1.06916,2.20593,True,True,https://understat.com/match/22294
+ENG-Premier League,2324,2023-08-25 Chelsea-Luton,1,2023,22295,2023-08-25 19:00:00,80,256,Chelsea,Luton,LUT,CHE,3,0,3.41419,0.465741,True,True,https://understat.com/match/22295

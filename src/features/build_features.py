@@ -243,7 +243,6 @@ def main(input_file, output_file):
     print("Calculating Head-to-Head...")
     processed_df = calculate_h2h(processed_df, window=5)
     
-    # Select final columns for modeling
     final_columns = [
         'Date', 'HomeTeam', 'AwayTeam', 
         'HomePointsRolling', 'AwayPointsRolling',
@@ -256,7 +255,8 @@ def main(input_file, output_file):
         'HomeRestDays', 'AwayRestDays',
         'H2H_HomePoints',
         'B365H', 'B365D', 'B365A',
-        'Target', 'FTR'
+        'Target', 'FTR',
+        'Home_xG', 'Away_xG'
     ]
     
     processed_df = processed_df[final_columns]
