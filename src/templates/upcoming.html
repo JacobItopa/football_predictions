@@ -160,23 +160,6 @@
             padding: 0.2rem 0.5rem;
         }
 
-        .live-stats-row {
-            display: flex;
-            justify-content: center;
-            gap: 1.5rem;
-            margin-top: 0.8rem;
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            grid-column: 1 / -1;
-            padding-top: 0.8rem;
-            border-top: 1px dashed rgba(255,255,255,0.1);
-        }
-        .stat-item span {
-            color: #f8fafc;
-            font-weight: 700;
-            margin-left: 4px;
-        }
-
         .loading-spinner {
             display: flex;
             flex-direction: column;
@@ -404,21 +387,6 @@
                             vsContainer.innerHTML = `
                                 ${badgeHtml}
                                 <div class="live-score">${liveData.home_score} - ${liveData.away_score}</div>
-                            `;
-                        }
-                        
-                        // Update live stats if available
-                        if (liveData.stats) {
-                            let statsRow = card.querySelector('.live-stats-row');
-                            if (!statsRow) {
-                                statsRow = document.createElement('div');
-                                statsRow.className = 'live-stats-row';
-                                card.appendChild(statsRow);
-                            }
-                            statsRow.innerHTML = `
-                                <div class="stat-item">Possession: <span>${liveData.stats.possession}</span></div>
-                                <div class="stat-item">Shots: <span>${liveData.stats.shots}</span></div>
-                                <div class="stat-item">Corners: <span>${liveData.stats.corners}</span></div>
                             `;
                         }
                     }
